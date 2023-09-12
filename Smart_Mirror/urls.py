@@ -15,7 +15,7 @@ Including another URLconf
 """
 from django.conf.urls import url
 from django.contrib import admin
-from django.contrib.auth.views import logout
+from django.contrib.auth.views import LogoutView
 from django.urls import include
 from django.urls import path
 
@@ -27,7 +27,8 @@ urlpatterns = [
     url(r'^$', views.index, name='index'),
     path('login/', views.my_login, name='login'),
     path('profile/', views.profile, name='profile'),
+    path('get_data/', views.user_get_data, name='user_face_data'),
     path('', include('social_django.urls', namespace='social')),
-    path('logout/', logout, {'next_page': settings.LOGOUT_REDIRECT_URL},
+    path('logout/', LogoutView.as_view(), {'next_page': settings.LOGOUT_REDIRECT_URL},
          name='logout'),
 ]

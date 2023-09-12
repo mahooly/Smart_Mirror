@@ -1,7 +1,10 @@
 import datetime
+
 from django.shortcuts import render, redirect
 from googleapiclient.discovery import build
+
 from smir.models import UserCredentials
+from .mqtt import client
 from .utils import refresh_token
 
 
@@ -11,7 +14,7 @@ def index(request):
             UserCredentials.objects.get(user=request.user)
             return redirect('/profile')
         except UserCredentials.DoesNotExist:
-            return redirect('/user-face-data')
+            return redirect('user_face_data')
 
     else:
         return redirect('/login')
@@ -26,9 +29,9 @@ def profile(request):
     service = build('calendar', 'v3', credentials=creds)
 
     # Call the Calendar API
-    now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
+    time = (datetime.datetime.utcnow() - datetime.timedelta(days=2)).isoformat() + 'Z'  # 'Z' indicates UTC time
     print('Getting the upcoming 10 events')
-    events_result = service.events().list(calendarId='primary', timeMin=now,
+    events_result = service.events().list(calendarId='primary', timeMin=time,
                                           maxResults=10, singleEvents=True,
                                           orderBy='startTime').execute()
     events = events_result.get('items', [])
@@ -44,6 +47,7 @@ def profile(request):
     # Call the Tasks API
     results = task_service.tasklists().list(maxResults=10).execute()
     items = results.get('items', [])
+    user_tasks = []
     if not items:
         print('No task lists found.')
     else:
@@ -52,6 +56,13 @@ def profile(request):
             print(u'{0} ({1})'.format(item['title'], item['id']))
             tasks = task_service.tasks().list(tasklist=item['id']).execute()
             for task in tasks['items']:
-                print(task['title'])
-
+                user_tasks.append(task['title'])
+        print(user_tasks)
     return render(request, 'profile.html', {'events': events})
+
+
+def user_get_data(request):
+    refresh_token(request.user.username)
+    client.publish(topic='camera/signup', payload=request.user.username)
+    return render(request, 'profile.html')
+
